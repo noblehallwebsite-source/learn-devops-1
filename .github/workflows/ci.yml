@@ -1,29 +1,67 @@
-name: CI Pipeline
+name: Multi Job CI
 
 on:
   push:
     branches:
       - main
 
-  pull_request:
-    branches:
-      - main
-
 jobs:
-  test:
+  # 1. Code Quality Check
+  lint:
+    name: ⬡ Lint Code
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Install Dependencies
-        run: npm ci
+      - run: npm ci
+      
+      - run: npm run lint
 
-      - name: Run Tests
-        run: npm test
+  # 2. Testing Stage (Depends on Lint)
+  test:
+    name: 🧪 Run Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      
+      - run: npm test
+
+  # 3. Build Stage (Depends on Test)
+  build:
+    name: 📦 Build Production Assets
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      
+      - run: npm run build
+
+  # 4. Security Scan Stage (Challenge Solution - Depends on Build)
+  security-scan:
+    name: 🛡️ Security Vulnerability Scan
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # Even if we are just running an echo command, we checkout the code 
+      # out of habit because real scanners need access to your repository files.
+      - uses: actions/checkout@v4
+
+      - name: Execute Security Scan
+        run: echo "Running security scan..."
